@@ -85,6 +85,35 @@ To build a release archive from the repo root:
 
 That writes the staged plugin folder and the packaged `.iinaplgz` into `.build/`.
 
+## Contributing
+
+Typical local dev loop:
+
+1. Clone the repo and open it locally.
+2. Run `./scripts/stage-plugin.sh` after any code change to refresh `.build/pause-card.iinaplugin`.
+3. Link the staged plugin into IINA once with:
+
+```bash
+/Applications/IINA.app/Contents/MacOS/iina-plugin link "$(pwd)/.build/pause-card.iinaplugin"
+```
+
+4. Restart IINA when you need it to pick up staged changes cleanly.
+5. Open `Plugins -> Pause Card -> Preferences` and configure TMDB auth if you want live metadata lookups during testing.
+
+Useful checks before opening a PR:
+
+```bash
+node --check main.js
+node tests/parser-smoke.js
+./scripts/pack-release.sh
+```
+
+Notes:
+
+- The repo root is the source of truth.
+- `.build/` is generated output and should not be committed.
+- The staged `.iinaplugin` folder exists only to support IINA's development link and release packaging flow.
+
 ## Known gaps
 
 - The parser is intentionally local and dependency-free for the bootstrap. It has a clean seam where `guessit-js` can replace or augment it later.

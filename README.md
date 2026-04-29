@@ -1,63 +1,31 @@
 # Pause Card
 
-Automatic pause-state metadata overlay for IINA.
+A Netflix-style pause overlay for IINA.
 
-This repo contains the `Pause Card` IINA plugin. It starts from the part of `iina-episode-info` that matters for your goal, then removes the manual search flow. The plugin:
+Pause Card identifies the current movie or episode from the filename, fetches metadata from TMDB, caches the result, and shows a clean pause screen with title, episode context, and synopsis.
 
-- parses the current file name automatically
-- classifies the media as a movie or TV episode
-- queries TMDB in the background
-- caches the resolved metadata in the plugin data directory
-- shows a Netflix-style pause overlay with title, season/episode line, episode title, and synopsis
+## Features
 
-## Source vs release
+- Automatic filename parsing for movies and TV episodes
+- TMDB lookup for titles, episode names, and synopses
+- Cache-first behavior to avoid repeated API calls
+- Text-only pause overlay inspired by Netflix
+- GitHub-installable IINA plugin layout
 
-The GitHub repo root is now the plugin source root.
+## Install
 
-That layout is intentional for IINA's GitHub install flow: keep `Info.json` and the runtime files at the repo root so the repository itself maps cleanly to a single plugin package.
+You can install Pause Card either by:
 
-The packaged install files are just release artifacts:
+1. entering the GitHub repository URL in IINA
+2. opening a packaged `*.iinaplgz` release with IINA
 
-- `*.iinaplgz`
-
-They are not the source of truth. For GitHub releases, the usual pattern is:
-
-1. commit the source files in the repo root
-2. tag a version
-3. upload the `.iinaplgz` as a GitHub Release asset
-
-If you want IINA to auto-check for updates after users install from GitHub, add `ghRepo` and `ghVersion` to `Info.json` once the final GitHub repository URL exists.
-
-## Project layout
-
-- `Info.json`: plugin manifest
-- `main.js`: runtime event flow, filename parsing, TMDB lookup, caching
-- `parser.js`: standalone parser module for smoke tests and local development
-- `overlay.html`: Netflix-inspired overlay
-- `preferences.html`: plugin settings
-- `scripts/stage-plugin.sh`: creates a clean `.iinaplugin` staging directory for packaging
-- `scripts/pack-release.sh`: builds a release archive from the staged plugin directory
-- `tests/parser-smoke.js`: parser smoke tests
-- `netflix_pause.png`: design reference
-
-## Current MVP behavior
-
-1. Open a file in IINA.
-2. The plugin reads `core.status.url`, parses the filename, and builds a lookup key.
-3. If metadata is cached, it reuses it immediately.
-4. Otherwise it calls TMDB and stores the resolved result under both the file URL and the normalized media identity.
-5. When playback pauses, the overlay appears after a configurable delay.
-
-## Cache behavior
-
-- Successful TMDB metadata is treated as the stable cache.
-- If no TMDB auth is configured, the plugin caches the parse-only fallback and reuses it until auth is added later.
-- If TMDB errors, the plugin caches the fallback plus a retry cooldown so it does not hammer the API on every file open.
-- If TMDB has no match, the plugin caches that fallback with a longer retry cooldown.
+After installation, open `Plugins -> Pause Card -> Preferences` and paste a TMDB API key or Read Access Token.
 
 ## Development
 
-For development, stage a clean plugin folder first:
+The repo root is the plugin source. `.build/` is generated output used for local linking and release packaging.
+
+Stage a clean plugin folder:
 
 ```bash
 ./scripts/stage-plugin.sh
@@ -69,36 +37,19 @@ That creates:
 .build/pause-card.iinaplugin
 ```
 
-Link that staged folder into IINA:
+Link the staged plugin into IINA:
 
 ```bash
 /Applications/IINA.app/Contents/MacOS/iina-plugin link "$(pwd)/.build/pause-card.iinaplugin"
 ```
-
-Then open IINA settings, go to `Plugins -> Pause Card -> Preferences`, and paste a TMDB API key or Read Access Token.
-
-To build a release archive from the repo root:
-
-```bash
-./scripts/pack-release.sh
-```
-
-That writes the staged plugin folder and the packaged `.iinaplgz` into `.build/`.
-
-## Contributing
 
 Typical local dev loop:
 
-1. Clone the repo and open it locally.
-2. Run `./scripts/stage-plugin.sh` after any code change to refresh `.build/pause-card.iinaplugin`.
-3. Link the staged plugin into IINA once with:
-
-```bash
-/Applications/IINA.app/Contents/MacOS/iina-plugin link "$(pwd)/.build/pause-card.iinaplugin"
-```
-
-4. Restart IINA when you need it to pick up staged changes cleanly.
-5. Open `Plugins -> Pause Card -> Preferences` and configure TMDB auth if you want live metadata lookups during testing.
+1. Make code changes in the repo root.
+2. Run `./scripts/stage-plugin.sh` to refresh the staged plugin.
+3. Restart IINA when needed to pick up the updated build.
+4. Test with local media in IINA.
+5. Configure TMDB auth in `Plugins -> Pause Card -> Preferences` if you want live metadata during testing.
 
 Useful checks before opening a PR:
 
@@ -108,14 +59,35 @@ node tests/parser-smoke.js
 ./scripts/pack-release.sh
 ```
 
-Notes:
+## Release
 
-- The repo root is the source of truth.
-- `.build/` is generated output and should not be committed.
-- The staged `.iinaplugin` folder exists only to support IINA's development link and release packaging flow.
+Build a release archive with:
 
-## Known gaps
+```bash
+./scripts/pack-release.sh
+```
 
-- The parser is intentionally local and dependency-free for the bootstrap. It has a clean seam where `guessit-js` can replace or augment it later.
-- There is no manual correction UI yet. If a filename parses badly or TMDB picks the wrong match, the next step is a lightweight "Override Match" panel rather than a full search workflow.
-- The overlay is text-only for now, matching your requested direction: no poster, no blurred synopsis.
+This writes the staged plugin and the packaged `*.iinaplgz` archive into `.build/`.
+
+## Project Layout
+
+- `Info.json`: plugin manifest
+- `main.js`: runtime, parsing, TMDB lookup, caching, and overlay flow
+- `parser.js`: standalone parser module for smoke tests and local development
+- `overlay.html`: pause overlay UI
+- `preferences.html`: plugin settings UI
+- `scripts/stage-plugin.sh`: creates the staged `.iinaplugin` directory
+- `scripts/pack-release.sh`: builds the release archive from the staged plugin
+- `tests/parser-smoke.js`: parser smoke tests
+
+## Notes
+
+- Successful TMDB results are cached as the stable metadata source.
+- If TMDB auth is missing, the plugin falls back to parsed filename data and can upgrade that cache later once auth is added.
+- Error and no-match fallbacks use retry cooldowns to avoid repeated failed lookups.
+
+## Known Gaps
+
+- The parser is intentionally dependency-free for now. `guessit-js` can replace or augment it later.
+- There is no manual correction UI yet if a filename parses badly or TMDB picks the wrong match.
+- The overlay is text-only by design for now.

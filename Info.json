@@ -1,7 +1,7 @@
 {
   "name": "Pause Card",
   "identifier": "io.github.fahim.pausecard",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "author": {
     "name": "Fahim"
   },
@@ -16,6 +16,8 @@
   "allowedDomains": [
     "api.themoviedb.org"
   ],
+  "ghRepo": "i3p9/iina-pause-card",
+  "ghVersion": 1,
   "preferencesPage": "preferences.html",
   "preferenceDefaults": {
     "tmdb_auth": "",

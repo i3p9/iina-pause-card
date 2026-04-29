@@ -2,7 +2,7 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-BUILD_DIR="$ROOT_DIR/.build/pause-media-info.iinaplugin"
+BUILD_DIR="$ROOT_DIR/.build/pause-card.iinaplugin"
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"

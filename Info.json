@@ -1,12 +1,12 @@
 {
-  "name": "Pause Media Info",
-  "identifier": "io.github.fahim.pausemediainfo",
-  "version": "0.1.12",
+  "name": "Pause Card",
+  "identifier": "io.github.fahim.pausecard",
+  "version": "0.1.13",
   "author": {
     "name": "Fahim"
   },
   "entry": "main.js",
-  "description": "Automatically identify the current movie or episode and show a Netflix-style pause overlay.",
+  "description": "A Netflix-style pause overlay for IINA.",
   "permissions": [
     "show-osd",
     "video-overlay",

@@ -674,8 +674,8 @@ function appendDebugLog(message) {
 }
 
 function log(message) {
-  iina.console.log("[PauseMediaInfo] " + message);
-  appendDebugLog("[PauseMediaInfo] " + message);
+  iina.console.log("[PauseCard] " + message);
+  appendDebugLog("[PauseCard] " + message);
 }
 
 function debugEnabled() {
@@ -685,7 +685,7 @@ function debugEnabled() {
 function debugOsd(message) {
   if (!debugEnabled()) return;
   try {
-    core.osd("Pause Media Info: " + message);
+    core.osd("Pause Card: " + message);
   } catch (_error) {}
 }
 
@@ -876,7 +876,7 @@ function refreshOverlayIfNeeded() {
 }
 
 function tmdbNotice() {
-  return "Add a TMDB API key or read access token in IINA Settings > Plugins > Pause Media Info.";
+  return "Add a TMDB API key or read access token in IINA Settings > Plugins > Pause Card.";
 }
 
 function lookupFailureNotice(error) {

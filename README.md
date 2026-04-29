@@ -1,8 +1,8 @@
-# Pause Media Info
+# Pause Card
 
 Automatic pause-state metadata overlay for IINA.
 
-This repo starts from the part of `iina-episode-info` that matters for your goal, then removes the manual search flow. The new plugin:
+This repo contains the `Pause Card` IINA plugin. It starts from the part of `iina-episode-info` that matters for your goal, then removes the manual search flow. The plugin:
 
 - parses the current file name automatically
 - classifies the media as a movie or TV episode
@@ -60,27 +60,27 @@ If you want IINA to auto-check for updates after users install from GitHub, add 
 For development, stage a clean plugin folder first:
 
 ```bash
-/Users/fahim/codes/projects/iina-pause-media-info/scripts/stage-plugin.sh
+./scripts/stage-plugin.sh
 ```
 
 That creates:
 
 ```bash
-/Users/fahim/codes/projects/iina-pause-media-info/.build/pause-media-info.iinaplugin
+.build/pause-card.iinaplugin
 ```
 
 Link that staged folder into IINA:
 
 ```bash
-/Applications/IINA.app/Contents/MacOS/iina-plugin link /Users/fahim/codes/projects/iina-pause-media-info/.build/pause-media-info.iinaplugin
+/Applications/IINA.app/Contents/MacOS/iina-plugin link "$(pwd)/.build/pause-card.iinaplugin"
 ```
 
-Then open IINA settings, go to `Plugins -> Pause Media Info -> Preferences`, and paste a TMDB API key or Read Access Token.
+Then open IINA settings, go to `Plugins -> Pause Card -> Preferences`, and paste a TMDB API key or Read Access Token.
 
 To build a release archive from the repo root:
 
 ```bash
-/Users/fahim/codes/projects/iina-pause-media-info/scripts/pack-release.sh
+./scripts/pack-release.sh
 ```
 
 That writes the staged plugin folder and the packaged `.iinaplgz` into `.build/`.

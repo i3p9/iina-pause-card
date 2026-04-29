@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --summary-lines: 4;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    pointer-events: none;
+    background: transparent;
+    font-family: "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    display: flex;
+    align-items: stretch;
+  }
+
+  #wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 520ms cubic-bezier(0.16, 0.84, 0.24, 1), visibility 520ms linear;
+  }
+
+  #shade {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.76) 30%, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.08) 86%, rgba(0, 0, 0, 0) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.42) 100%);
+    transition: opacity 520ms cubic-bezier(0.16, 0.84, 0.24, 1);
+  }
+
+  #content {
+    position: relative;
+    z-index: 1;
+    max-width: 46vw;
+    min-width: 560px;
+    padding: 9vh 0 8vh 4.8vw;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    text-shadow: 0 3px 14px rgba(0, 0, 0, 0.48);
+    opacity: 0;
+    transform: translateY(10px) scale(0.996);
+    transition:
+      opacity 640ms cubic-bezier(0.16, 0.84, 0.24, 1) 60ms,
+      transform 640ms cubic-bezier(0.16, 0.84, 0.24, 1) 60ms;
+  }
+
+  #eyebrow {
+    font-size: 1.1vw;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.88);
+    margin-bottom: 2.7vh;
+  }
+
+  #primary-title {
+    font-size: 4.2vw;
+    line-height: 0.98;
+    font-weight: 700;
+    margin-bottom: 1.3vh;
+  }
+
+  #secondary-title {
+    font-size: 2.05vw;
+    line-height: 1.15;
+    font-weight: 700;
+    margin-bottom: 3vh;
+  }
+
+  #tertiary-title {
+    font-size: 1.6vw;
+    line-height: 1.2;
+    font-weight: 700;
+    margin-bottom: 1.7vh;
+    color: rgba(255, 255, 255, 0.96);
+  }
+
+  #summary {
+    font-size: 1.28vw;
+    line-height: 1.42;
+    color: rgba(255, 255, 255, 0.86);
+    display: -webkit-box;
+    -webkit-line-clamp: var(--summary-lines);
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 42vw;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  #wrap.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  #wrap.visible #shade {
+    opacity: 1;
+  }
+
+  #wrap.visible #content {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="shade"></div>
+    <div id="content">
+      <div id="eyebrow">You're Watching</div>
+      <div id="primary-title"></div>
+      <div id="secondary-title"></div>
+      <div id="tertiary-title"></div>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+  <script>
+    var wrap = document.getElementById("wrap");
+    var showAnimationFrame = 0;
+
+    function setText(id, value) {
+      var node = document.getElementById(id);
+      var text = String(value || "");
+      node.textContent = text;
+      node.classList.toggle("hidden", !text);
+    }
+
+    function animateIn() {
+      if (showAnimationFrame) {
+        cancelAnimationFrame(showAnimationFrame);
+        showAnimationFrame = 0;
+      }
+      wrap.classList.remove("visible");
+      void wrap.offsetWidth;
+      showAnimationFrame = requestAnimationFrame(function() {
+        wrap.classList.add("visible");
+        showAnimationFrame = 0;
+      });
+    }
+
+    function resetVisibility() {
+      if (showAnimationFrame) {
+        cancelAnimationFrame(showAnimationFrame);
+        showAnimationFrame = 0;
+      }
+      wrap.classList.remove("visible");
+    }
+
+    iina.onMessage("showData", function(data) {
+      document.documentElement.style.setProperty("--summary-lines", String(data.summaryLines || 4));
+      setText("eyebrow", data.eyebrow || "You're Watching");
+      setText("primary-title", data.primaryTitle || "");
+      setText("secondary-title", data.secondaryTitle || "");
+      setText("tertiary-title", data.tertiaryTitle || "");
+      setText("summary", data.summary || "");
+      animateIn();
+    });
+
+    iina.onMessage("hideData", function() {
+      resetVisibility();
+    });
+  </script>
+</body>
+</html>

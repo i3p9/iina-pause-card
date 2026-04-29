@@ -1,0 +1,28 @@
+{
+  "name": "Pause Media Info",
+  "identifier": "io.github.fahim.pausemediainfo",
+  "version": "0.1.12",
+  "author": {
+    "name": "Fahim"
+  },
+  "entry": "main.js",
+  "description": "Automatically identify the current movie or episode and show a Netflix-style pause overlay.",
+  "permissions": [
+    "show-osd",
+    "video-overlay",
+    "network-request",
+    "file-system"
+  ],
+  "allowedDomains": [
+    "api.themoviedb.org"
+  ],
+  "preferencesPage": "preferences.html",
+  "preferenceDefaults": {
+    "tmdb_auth": "",
+    "metadata_language": "en-US",
+    "overlay_enabled": true,
+    "pause_delay_seconds": 0.45,
+    "synopsis_lines": 4,
+    "debug_osd": false
+  }
+}

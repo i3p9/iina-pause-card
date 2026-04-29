@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  .pref-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 10px 12px;
+    align-items: center;
+  }
+
+  .pref-note {
+    grid-column: 2;
+    margin-top: -6px;
+  }
+
+  input[type="text"],
+  input[type="number"] {
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+  <div class="pref-section">
+    <h3>Metadata</h3>
+    <div class="pref-grid">
+      <label for="tmdb-auth">TMDB auth</label>
+      <input id="tmdb-auth" type="text" data-pref-key="tmdb_auth" placeholder="API key or Read Access Token" />
+      <div></div>
+      <p class="small secondary pref-help pref-note">
+        Automatic lookup uses TMDB for both movies and TV episodes. Paste either a TMDB v3 API key or a v4 Read Access Token.
+      </p>
+
+      <label for="language">Language</label>
+      <input id="language" type="text" data-pref-key="metadata_language" placeholder="en-US" />
+      <div></div>
+      <p class="small secondary pref-help pref-note">
+        TMDB language code used when fetching titles and synopses, for example <code>en-US</code>.
+      </p>
+    </div>
+  </div>
+
+  <div class="pref-section">
+    <h3>Overlay</h3>
+    <div class="pref-grid">
+      <label>
+        <input type="checkbox" data-type="bool" data-pref-key="overlay_enabled" />
+        Enable pause overlay
+      </label>
+      <div></div>
+
+      <label for="pause-delay">Pause delay</label>
+      <input id="pause-delay" type="number" min="0" step="0.1" data-type="float" data-pref-key="pause_delay_seconds" />
+      <div></div>
+      <p class="small secondary pref-help pref-note">
+        Number of seconds to wait after pausing before the overlay appears.
+      </p>
+
+      <label for="synopsis-lines">Synopsis lines</label>
+      <input id="synopsis-lines" type="number" min="2" max="8" step="1" data-type="int" data-pref-key="synopsis_lines" />
+      <div></div>
+      <p class="small secondary pref-help pref-note">
+        Limits how much synopsis text is shown on the pause screen.
+      </p>
+
+      <label>
+        <input type="checkbox" data-type="bool" data-pref-key="debug_osd" />
+        Show debug OSD
+      </label>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="pref-section">
+    <p class="small secondary">
+      Current MVP behavior: parse the current filename automatically, classify movie vs episode, query TMDB, cache the result in the plugin data directory, and render a Netflix-style pause overlay without a manual search step.
+    </p>
+  </div>
+</body>
+</html>

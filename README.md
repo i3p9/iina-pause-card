@@ -59,6 +59,20 @@ node tests/parser-smoke.js
 ./scripts/pack-release.sh
 ```
 
+Refresh the vendored `guessit-js` runtime from the local reference copy:
+
+```bash
+./scripts/vendor-guessit.sh
+```
+
+Run the reference `guessit-js` JavaScript test suite from `resourses/guessit-js-main`:
+
+```bash
+./scripts/test-guessit-reference.sh
+```
+
+These two scripts expect a local reference checkout under `resourses/`, which is intentionally gitignored and not part of the published repo.
+
 ## Release
 
 Build a release archive with:
@@ -73,11 +87,14 @@ This writes the staged plugin and the packaged `*.iinaplgz` archive into `.build
 
 - `Info.json`: plugin manifest
 - `main.js`: runtime, parsing, TMDB lookup, caching, and overlay flow
-- `parser.js`: standalone parser module for smoke tests and local development
+- `parser.js`: `guessit-js` backed parser with heuristic fallback
 - `overlay.html`: pause overlay UI
 - `preferences.html`: plugin settings UI
+- `vendor/`: vendored third-party runtime files used by the plugin
 - `scripts/stage-plugin.sh`: creates the staged `.iinaplugin` directory
 - `scripts/pack-release.sh`: builds the release archive from the staged plugin
+- `scripts/vendor-guessit.sh`: refreshes the vendored `guessit-js` runtime from the local reference copy
+- `scripts/test-guessit-reference.sh`: runs the upstream `guessit-js` JS test suite
 - `tests/parser-smoke.js`: parser smoke tests
 
 ## Notes
@@ -88,6 +105,6 @@ This writes the staged plugin and the packaged `*.iinaplgz` archive into `.build
 
 ## Known Gaps
 
-- The parser is intentionally dependency-free for now. `guessit-js` can replace or augment it later.
+- The parser now uses vendored `guessit-js` by default and falls back to the older heuristic parser when needed, but it still needs more project-specific regression coverage before we treat it as fully production-hardened.
 - There is no manual correction UI yet if a filename parses badly or TMDB picks the wrong match.
 - The overlay is text-only by design for now.

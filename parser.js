@@ -1,3 +1,7 @@
+var guessitModule = null;
+var guessitLoadError = null;
+var guessitModuleLoader = null;
+
 var VIDEO_EXTENSION_RE = /\.(mkv|mp4|m4v|avi|mov|wmv|mpg|mpeg|ts|m2ts|webm|flv)$/i;
 var EPISODE_PATTERNS = [
   /\bS(\d{1,2})\s*E(\d{1,2})(?:\s*E\d{1,2})?\b/i,
@@ -99,7 +103,7 @@ function buildMovieLookupKey(title, year) {
   return ["movie", slugify(title), year || ""].join("|");
 }
 
-function parseEpisodeFromName(baseName, parentSegments) {
+function heuristicParseEpisodeFromName(baseName, parentSegments) {
   var cleanedName = normalizeWhitespace(baseName);
   var match = null;
 
@@ -132,11 +136,12 @@ function parseEpisodeFromName(baseName, parentSegments) {
     episode: episode,
     episodeTitle: episodeTitle || "",
     year: year,
-    lookupKey: buildEpisodeLookupKey(showTitle, year, season, episode)
+    lookupKey: buildEpisodeLookupKey(showTitle, year, season, episode),
+    parserSource: "heuristic"
   };
 }
 
-function parseMovieFromName(baseName, parentSegments) {
+function heuristicParseMovieFromName(baseName, parentSegments) {
   var cleanedName = normalizeWhitespace(baseName);
   if (!cleanedName) return null;
 
@@ -166,18 +171,19 @@ function parseMovieFromName(baseName, parentSegments) {
     kind: "movie",
     title: title,
     year: year || extractYear(parentTitle),
-    lookupKey: buildMovieLookupKey(title, year || extractYear(parentTitle))
+    lookupKey: buildMovieLookupKey(title, year || extractYear(parentTitle)),
+    parserSource: "heuristic"
   };
 }
 
-function parseNameLike(value) {
+function heuristicParseNameLike(value) {
   var path = getPathFromUrl(value);
   var segments = splitSegments(path);
   var fileName = segments.length ? segments[segments.length - 1] : path;
   var baseName = stripExtension(fileName);
   var parentSegments = segments.slice(0, -1);
-  var episode = parseEpisodeFromName(baseName, parentSegments);
-  var movie = parseMovieFromName(baseName, parentSegments);
+  var episode = heuristicParseEpisodeFromName(baseName, parentSegments);
+  var movie = heuristicParseMovieFromName(baseName, parentSegments);
 
   if (episode) return episode;
   if (movie) return movie;
@@ -188,13 +194,150 @@ function parseNameLike(value) {
   return {
     kind: "unknown",
     title: fallbackTitle,
-    lookupKey: buildMovieLookupKey(fallbackTitle, null)
+    lookupKey: buildMovieLookupKey(fallbackTitle, null),
+    parserSource: "heuristic"
   };
 }
 
+function heuristicParseMediaFromSource(url, title) {
+  var fromUrl = heuristicParseNameLike(url || "");
+  var fromTitle = heuristicParseNameLike(title || "");
+
+  if (fromUrl && fromUrl.kind !== "unknown") return fromUrl;
+  if (fromTitle && fromTitle.kind !== "unknown") return fromTitle;
+  return fromUrl || fromTitle || null;
+}
+
+function getGuessit() {
+  if (guessitModule) return guessitModule;
+  if (guessitLoadError) return null;
+
+  try {
+    if (typeof guessitModuleLoader !== "function") {
+      throw new Error("Guessit module loader is not configured");
+    }
+    guessitModule = guessitModuleLoader();
+  } catch (error) {
+    guessitLoadError = error;
+    guessitModule = null;
+  }
+
+  return guessitModule;
+}
+
+function pickFirstText(value) {
+  if (Array.isArray(value)) return pickFirstText(value[0]);
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
+function pickFirstNumber(value) {
+  if (Array.isArray(value)) return pickFirstNumber(value[0]);
+  if (value === null || value === undefined || value === "") return null;
+  var parsed = parseInt(value, 10);
+  return isNaN(parsed) ? null : parsed;
+}
+
+function normalizeGuessitText(value) {
+  var text = safeDecode(pickFirstText(value));
+  if (!text) return "";
+  return prettifyTitle(text);
+}
+
+function chooseEpisodeTitle(guess, fallback) {
+  var title = normalizeGuessitText(guess.episode_title || guess.alternative_title || "");
+  if (!title || /%[0-9A-F]{2}/i.test(pickFirstText(guess.episode_title || guess.alternative_title || ""))) {
+    return fallback && fallback.kind === "episode" ? (fallback.episodeTitle || "") : "";
+  }
+  return title;
+}
+
+function chooseMovieTitle(guess, fallback) {
+  var baseTitle = normalizeGuessitText(guess.title);
+  var fallbackTitle = fallback && fallback.kind === "movie" ? (fallback.title || "") : "";
+  var part = pickFirstNumber(guess.part);
+
+  if (fallbackTitle && (!baseTitle || (part && fallbackTitle.length > baseTitle.length))) {
+    return fallbackTitle;
+  }
+  if (part && baseTitle) {
+    return baseTitle + " Part " + part;
+  }
+  return baseTitle || fallbackTitle;
+}
+
+function normalizeGuessitResult(rawGuess, fallback) {
+  if (!rawGuess || typeof rawGuess !== "object") return null;
+
+  var kind = pickFirstText(rawGuess.type).toLowerCase();
+  if (kind === "episode") {
+    var showTitle = normalizeGuessitText(rawGuess.title) || (fallback && fallback.kind === "episode" ? fallback.showTitle : "");
+    var season = pickFirstNumber(rawGuess.season);
+    var episode = pickFirstNumber(rawGuess.episode);
+    var year = pickFirstNumber(rawGuess.year) || (fallback ? fallback.year || null : null);
+    var episodeTitle = chooseEpisodeTitle(rawGuess, fallback);
+
+    if (!showTitle || episode === null) return null;
+    if (season === null) {
+      season = fallback && fallback.kind === "episode" && fallback.season ? fallback.season : 1;
+    }
+
+    return {
+      kind: "episode",
+      showTitle: showTitle,
+      season: season,
+      episode: episode,
+      episodeTitle: episodeTitle || "",
+      year: year,
+      lookupKey: buildEpisodeLookupKey(showTitle, year, season, episode),
+      parserSource: "guessit"
+    };
+  }
+
+  if (kind === "movie") {
+    var title = chooseMovieTitle(rawGuess, fallback);
+    var movieYear = pickFirstNumber(rawGuess.year) || (fallback ? fallback.year || null : null);
+
+    if (!title) return null;
+
+    return {
+      kind: "movie",
+      title: title,
+      year: movieYear,
+      lookupKey: buildMovieLookupKey(title, movieYear),
+      parserSource: "guessit"
+    };
+  }
+
+  return null;
+}
+
+function tryGuessitParse(value) {
+  var api = getGuessit();
+  if (!api || typeof api.guessit !== "function") return null;
+
+  var candidate = getPathFromUrl(value);
+  if (!candidate) return null;
+
+  try {
+    return api.guessit(candidate);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function parseNameLikeWithGuessit(value) {
+  var fallback = heuristicParseNameLike(value);
+  var rawGuess = tryGuessitParse(value);
+  var normalized = normalizeGuessitResult(rawGuess, fallback);
+
+  if (normalized) return normalized;
+  return fallback;
+}
+
 function parseMediaFromSource(url, title) {
-  var fromUrl = parseNameLike(url || "");
-  var fromTitle = parseNameLike(title || "");
+  var fromUrl = parseNameLikeWithGuessit(url || "");
+  var fromTitle = parseNameLikeWithGuessit(title || "");
 
   if (fromUrl && fromUrl.kind !== "unknown") return fromUrl;
   if (fromTitle && fromTitle.kind !== "unknown") return fromTitle;
@@ -202,5 +345,14 @@ function parseMediaFromSource(url, title) {
 }
 
 module.exports = {
-  parseMediaFromSource: parseMediaFromSource
+  configure: function(options) {
+    var settings = options || {};
+    if (typeof settings.loadGuessitModule === "function") {
+      guessitModuleLoader = settings.loadGuessitModule;
+      guessitModule = null;
+      guessitLoadError = null;
+    }
+  },
+  parseMediaFromSource: parseMediaFromSource,
+  heuristicParseMediaFromSource: heuristicParseMediaFromSource
 };

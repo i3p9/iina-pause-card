@@ -23,6 +23,7 @@
     "tmdb_auth": "",
     "metadata_language": "en-US",
     "overlay_enabled": true,
+    "overlay_fullscreen_only": false,
     "pause_delay_seconds": 0.45,
     "synopsis_lines": 4,
     "debug_osd": false

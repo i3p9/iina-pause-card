@@ -10,6 +10,7 @@ Pause Card identifies the current movie or episode from the filename, fetches me
 - TMDB lookup for titles, episode names, and synopses
 - Cache-first behavior to avoid repeated API calls
 - Text-only pause overlay inspired by Netflix
+- Optional fullscreen-only overlay mode to avoid windowed drag-and-drop conflicts
 - GitHub-installable IINA plugin layout
 
 ## Install
@@ -82,20 +83,6 @@ Build a release archive with:
 ```
 
 This writes the staged plugin and the packaged `*.iinaplgz` archive into `.build/`.
-
-## Project Layout
-
-- `Info.json`: plugin manifest
-- `main.js`: runtime, parsing, TMDB lookup, caching, and overlay flow
-- `parser.js`: `guessit-js` backed parser with heuristic fallback
-- `overlay.html`: pause overlay UI
-- `preferences.html`: plugin settings UI
-- `vendor/`: vendored third-party runtime files used by the plugin
-- `scripts/stage-plugin.sh`: creates the staged `.iinaplugin` directory
-- `scripts/pack-release.sh`: builds the release archive from the staged plugin
-- `scripts/vendor-guessit.sh`: refreshes the vendored `guessit-js` runtime from the local reference copy
-- `scripts/test-guessit-reference.sh`: runs the upstream `guessit-js` JS test suite
-- `tests/parser-smoke.js`: parser smoke tests
 
 ## Notes
 

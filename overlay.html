@@ -35,9 +35,8 @@
     height: 100%;
     position: relative;
     overflow: hidden;
-    opacity: 0;
     visibility: hidden;
-    transition: opacity 520ms cubic-bezier(0.16, 0.84, 0.24, 1), visibility 520ms linear;
+    will-change: contents;
   }
 
   #shade {
@@ -47,7 +46,8 @@
     background:
       linear-gradient(90deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.76) 30%, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.08) 86%, rgba(0, 0, 0, 0) 100%),
       linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.42) 100%);
-    transition: opacity 520ms cubic-bezier(0.16, 0.84, 0.24, 1);
+    will-change: opacity;
+    transition: opacity 360ms cubic-bezier(0.16, 0.84, 0.24, 1);
   }
 
   #content {
@@ -63,10 +63,13 @@
     height: 100%;
     text-shadow: 0 3px 14px rgba(0, 0, 0, 0.48);
     opacity: 0;
-    transform: translateY(10px) scale(0.996);
+    transform: translate3d(0, 8px, 0);
+    transform-origin: left center;
+    backface-visibility: hidden;
+    will-change: opacity, transform;
     transition:
-      opacity 640ms cubic-bezier(0.16, 0.84, 0.24, 1) 60ms,
-      transform 640ms cubic-bezier(0.16, 0.84, 0.24, 1) 60ms;
+      opacity 420ms cubic-bezier(0.16, 0.84, 0.24, 1) 30ms,
+      transform 420ms cubic-bezier(0.16, 0.84, 0.24, 1) 30ms;
   }
 
   #eyebrow {
@@ -115,7 +118,6 @@
   }
 
   #wrap.visible {
-    opacity: 1;
     visibility: visible;
   }
 
@@ -125,7 +127,7 @@
 
   #wrap.visible #content {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 </style>
 </head>
@@ -152,13 +154,21 @@
       node.classList.toggle("hidden", !text);
     }
 
+    function applyData(data) {
+      var payload = data && data.payload ? data.payload : (data || {});
+      document.documentElement.style.setProperty("--summary-lines", String(payload.summaryLines || 4));
+      setText("eyebrow", payload.eyebrow || "You're Watching");
+      setText("primary-title", payload.primaryTitle || "");
+      setText("secondary-title", payload.secondaryTitle || "");
+      setText("tertiary-title", payload.tertiaryTitle || "");
+      setText("summary", payload.summary || "");
+    }
+
     function animateIn() {
       if (showAnimationFrame) {
         cancelAnimationFrame(showAnimationFrame);
         showAnimationFrame = 0;
       }
-      wrap.classList.remove("visible");
-      void wrap.offsetWidth;
       showAnimationFrame = requestAnimationFrame(function() {
         wrap.classList.add("visible");
         showAnimationFrame = 0;
@@ -174,13 +184,13 @@
     }
 
     iina.onMessage("showData", function(data) {
-      document.documentElement.style.setProperty("--summary-lines", String(data.summaryLines || 4));
-      setText("eyebrow", data.eyebrow || "You're Watching");
-      setText("primary-title", data.primaryTitle || "");
-      setText("secondary-title", data.secondaryTitle || "");
-      setText("tertiary-title", data.tertiaryTitle || "");
-      setText("summary", data.summary || "");
-      animateIn();
+      var shouldAnimate = !wrap.classList.contains("visible") && (!data || data.animate !== false);
+      applyData(data);
+      if (shouldAnimate) {
+        animateIn();
+        return;
+      }
+      wrap.classList.add("visible");
     });
 
     iina.onMessage("hideData", function() {

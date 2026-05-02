@@ -1,7 +1,10 @@
 const { core, event, overlay, file, preferences, utils } = iina;
 
 var overlayLoaded = false;
+var overlayMounted = false;
 var overlayVisible = false;
+var lastOverlayPayloadKey = "";
+var windowIsFullscreen = false;
 var pauseTimer = null;
 var pauseStartedAt = 0;
 var waitingForMetadata = false;
@@ -19,26 +22,10 @@ try {
   throw error;
 }
 
-function loadVendoredCommonJs(modulePath) {
-  var source = file.read(modulePath);
-  if (source === null || source === undefined) {
-    throw new Error("Failed to read vendored module: " + modulePath);
-  }
-
-  var module = { exports: {} };
-  var localRequire = function(requestPath) {
-    throw new Error("Vendored module import is not supported: " + requestPath);
-  };
-  var processShim = { env: {} };
-  var factory = new Function("module", "exports", "require", "process", source + "\nreturn module.exports;");
-  factory(module, module.exports, localRequire, processShim);
-  return module.exports;
-}
-
 parser.configure({
   loadGuessitModule: function() {
     appendDebugLog("[PauseCard] Loading vendored guessit bundle");
-    return loadVendoredCommonJs("vendor/guessit-js.cjs");
+    return require("./vendor/guessit-js.cjs");
   }
 });
 
@@ -528,7 +515,24 @@ function wrapEvent(label, fn) {
 function ensureOverlayLoaded() {
   if (overlayLoaded) return;
   overlay.loadFile("overlay.html");
+  // Let the player continue receiving clicks and file drops while the overlay is visible.
+  overlay.setClickable(false);
   overlayLoaded = true;
+}
+
+function mountOverlay() {
+  ensureOverlayLoaded();
+  if (overlayMounted) return false;
+  overlay.show();
+  overlayMounted = true;
+  return true;
+}
+
+function unmountOverlay() {
+  if (!overlayLoaded || !overlayMounted) return false;
+  overlay.hide();
+  overlayMounted = false;
+  return true;
 }
 
 function getCurrentSource() {
@@ -656,14 +660,58 @@ function clearPauseTimer() {
   pauseTimer = null;
 }
 
+function syncWindowFullscreenState() {
+  try {
+    if (iina.mpv && typeof iina.mpv.getFlag === "function") {
+      windowIsFullscreen = !!iina.mpv.getFlag("fullscreen");
+      return windowIsFullscreen;
+    }
+  } catch (_error) {}
+
+  try {
+    if (typeof core.status.fullscreen === "boolean") {
+      windowIsFullscreen = core.status.fullscreen;
+      return windowIsFullscreen;
+    }
+    if (typeof core.status.fullScreen === "boolean") {
+      windowIsFullscreen = core.status.fullScreen;
+      return windowIsFullscreen;
+    }
+  } catch (_error2) {}
+
+  try {
+    if (core.window && typeof core.window.fullscreen === "boolean") {
+      windowIsFullscreen = core.window.fullscreen;
+      return windowIsFullscreen;
+    }
+    if (core.window && typeof core.window.fullScreen === "boolean") {
+      windowIsFullscreen = core.window.fullScreen;
+      return windowIsFullscreen;
+    }
+  } catch (_error3) {}
+
+  return windowIsFullscreen;
+}
+
+function overlayAllowedForCurrentWindow() {
+  if (!prefBool("overlay_enabled", true)) return false;
+  if (!prefBool("overlay_fullscreen_only", false)) return true;
+  return syncWindowFullscreenState();
+}
+
+function hideOverlayView() {
+  if (overlayLoaded) {
+    overlay.postMessage("hideData", {});
+  }
+  unmountOverlay();
+  overlayVisible = false;
+  lastOverlayPayloadKey = "";
+}
+
 function hideOverlay() {
   clearPauseTimer();
   waitingForMetadata = false;
-  if (overlayLoaded) {
-    overlay.postMessage("hideData", {});
-    overlay.hide();
-  }
-  overlayVisible = false;
+  hideOverlayView();
 }
 
 function overlayDelayElapsed() {
@@ -671,19 +719,65 @@ function overlayDelayElapsed() {
   return Date.now() - pauseStartedAt >= (prefNumber("pause_delay_seconds", 0.8) * 1000);
 }
 
-function showOverlay(display) {
-  if (!display || !prefBool("overlay_enabled", true)) return;
-  ensureOverlayLoaded();
-  overlay.show();
-  overlay.postMessage("showData", {
+function armPauseOverlayTimer() {
+  clearPauseTimer();
+  pauseStartedAt = Date.now();
+  waitingForMetadata = true;
+  if (overlayAllowedForCurrentWindow()) {
+    mountOverlay();
+  }
+  pauseTimer = setTimeout(function() {
+    pauseTimer = null;
+    if (!core.status.paused || !waitingForMetadata) return;
+    if (currentMedia && currentMedia.status !== "loading") {
+      showOverlay(currentMedia.display);
+    }
+  }, prefNumber("pause_delay_seconds", 0.8) * 1000);
+}
+
+function buildOverlayPayload(display) {
+  return {
     eyebrow: "You're Watching",
     primaryTitle: display.primaryTitle || "",
     secondaryTitle: display.secondaryTitle || "",
     tertiaryTitle: display.tertiaryTitle || "",
     summary: display.summary || "",
     summaryLines: Math.max(2, Math.min(8, Math.round(prefNumber("synopsis_lines", 4))))
+  };
+}
+
+function showOverlay(display) {
+  if (!display) return false;
+  if (!overlayAllowedForCurrentWindow()) {
+    log("Overlay suppressed for current window mode");
+    return false;
+  }
+
+  var payload = buildOverlayPayload(display);
+  var payloadKey = JSON.stringify(payload);
+
+  if (overlayVisible) {
+    if (payloadKey === lastOverlayPayloadKey) {
+      return false;
+    }
+    clearPauseTimer();
+    overlay.postMessage("showData", {
+      payload: payload,
+      animate: false
+    });
+    lastOverlayPayloadKey = payloadKey;
+    return true;
+  }
+
+  mountOverlay();
+  clearPauseTimer();
+  overlay.postMessage("showData", {
+    payload: payload,
+    animate: true
   });
   overlayVisible = true;
+  lastOverlayPayloadKey = payloadKey;
+  return true;
 }
 
 function refreshOverlayIfNeeded() {
@@ -827,42 +921,64 @@ async function identifyCurrentMedia() {
 
 function onPause() {
   if (!prefBool("overlay_enabled", true)) return;
+  var source = getCurrentSource();
+  armPauseOverlayTimer();
   if (!currentMedia || !currentMedia.display) {
     debugOsd("No parsed media yet");
+    if (source.url || source.title) {
+      identifyCurrentMedia();
+    }
     return;
   }
-
-  clearPauseTimer();
-  pauseStartedAt = Date.now();
-  waitingForMetadata = true;
-  pauseTimer = setTimeout(function() {
-    pauseTimer = null;
-    if (!core.status.paused || !waitingForMetadata) return;
-    if (currentMedia && currentMedia.status !== "loading") {
-      showOverlay(currentMedia.display);
-    }
-  }, prefNumber("pause_delay_seconds", 0.8) * 1000);
 }
 
 function onResume() {
   hideOverlay();
 }
 
+function handleWindowFullscreenChanged() {
+  var current = syncWindowFullscreenState();
+
+  if (!prefBool("overlay_fullscreen_only", false)) {
+    return;
+  }
+
+  if (!current) {
+    hideOverlayView();
+    return;
+  }
+
+  if (waitingForMetadata) {
+    mountOverlay();
+  }
+
+  if (core.status.paused) {
+    refreshOverlayIfNeeded();
+  }
+}
+
 function handleFileLoaded() {
   var source = getCurrentSource();
   var signature = source.url || source.title;
+  var paused = !!core.status.paused;
 
   hideOverlay();
   pauseStartedAt = 0;
   waitingForMetadata = false;
 
   if (signature && signature === lastSourceSignature && currentMedia) {
+    if (paused && prefBool("overlay_enabled", true)) {
+      armPauseOverlayTimer();
+    }
     return;
   }
 
   lastLookupKey = "";
   lastSourceSignature = signature;
   currentMedia = null;
+  if (paused && prefBool("overlay_enabled", true)) {
+    armPauseOverlayTimer();
+  }
   identifyCurrentMedia();
 }
 
@@ -870,8 +986,13 @@ log("Plugin main loaded");
 appendDebugLog("[PauseCard] Parser mode default=guessit-with-heuristic-fallback");
 
 event.on("iina.window-loaded", wrapEvent("iina.window-loaded", function() {
+  syncWindowFullscreenState();
   ensureOverlayLoaded();
   debugOsd("Plugin loaded");
+}));
+
+event.on("iina.window-fs.changed", wrapEvent("iina.window-fs.changed", function() {
+  handleWindowFullscreenChanged();
 }));
 
 event.on("iina.file-loaded", wrapEvent("iina.file-loaded", function() {

@@ -217,12 +217,47 @@ function getGuessit() {
       throw new Error("Guessit module loader is not configured");
     }
     guessitModule = guessitModuleLoader();
+    if (!guessitModule || typeof guessitModule.guessit !== "function") {
+      throw new Error("Guessit module did not export guessit()");
+    }
   } catch (error) {
     guessitLoadError = error;
     guessitModule = null;
   }
 
   return guessitModule;
+}
+
+function getDiagnostics() {
+  if (guessitModule) {
+    return {
+      guessitAvailable: true,
+      guessitStatus: "loaded",
+      guessitLoadError: null
+    };
+  }
+
+  if (guessitLoadError) {
+    return {
+      guessitAvailable: false,
+      guessitStatus: "load-failed",
+      guessitLoadError: (guessitLoadError && guessitLoadError.message) || String(guessitLoadError)
+    };
+  }
+
+  if (typeof guessitModuleLoader !== "function") {
+    return {
+      guessitAvailable: false,
+      guessitStatus: "unconfigured",
+      guessitLoadError: "Guessit module loader is not configured"
+    };
+  }
+
+  return {
+    guessitAvailable: false,
+    guessitStatus: "not-loaded",
+    guessitLoadError: null
+  };
 }
 
 function pickFirstText(value) {
@@ -353,6 +388,7 @@ module.exports = {
       guessitLoadError = null;
     }
   },
+  getDiagnostics: getDiagnostics,
   parseMediaFromSource: parseMediaFromSource,
   heuristicParseMediaFromSource: heuristicParseMediaFromSource
 };

@@ -1,6 +1,12 @@
 const assert = require("assert");
 const parser = require("../parser");
 
+parser.configure({
+  loadGuessitModule: function() {
+    return require("../vendor/guessit-js.cjs");
+  }
+});
+
 var samples = [
   {
     input: "/Users/fahim/Videos/Altered Carbon/Season 01/Altered.Carbon.S01E01.Out.of.the.Past.1080p.NF.WEB-DL.mkv",
@@ -45,6 +51,7 @@ var samples = [
 samples.forEach(function(sample) {
   var parsed = parser.parseMediaFromSource(sample.input, "");
   assert(parsed, "Expected parser to return a result for " + sample.input);
+  assert.strictEqual(parsed.parserSource, "guessit", "Expected guessit parserSource for " + sample.input);
   Object.keys(sample.expected).forEach(function(key) {
     assert.strictEqual(
       parsed[key],

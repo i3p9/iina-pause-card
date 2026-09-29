@@ -13,6 +13,7 @@ var currentMedia = null;
 var lastSourceSignature = "";
 var lastLookupKey = "";
 var parser = null;
+var guessitFailureLogged = false;
 
 try {
   parser = require("./parser.js");
@@ -499,6 +500,17 @@ function debugOsd(message) {
   } catch (_error) {}
 }
 
+function logGuessitFailureOnce() {
+  if (guessitFailureLogged || !parser || typeof parser.getDiagnostics !== "function") return;
+
+  var diagnostics = parser.getDiagnostics();
+  if (!diagnostics) return;
+  if (diagnostics.guessitStatus !== "load-failed" && diagnostics.guessitStatus !== "unconfigured") return;
+
+  guessitFailureLogged = true;
+  log("Guessit unavailable: " + diagnostics.guessitLoadError);
+}
+
 function wrapEvent(label, fn) {
   return function() {
     var args = arguments;
@@ -819,6 +831,7 @@ async function identifyCurrentMedia() {
   var source = getCurrentSource();
   appendDebugLog("[PauseCard] Parser attempt source=" + (source.url || source.title || ""));
   var parsed = parser.parseMediaFromSource(source.url, source.title);
+  logGuessitFailureOnce();
   var lookupToken = activeLookupToken + 1;
   var cachedEntry = getCachedEntry(source, parsed);
   var auth = prefString("tmdb_auth", "").trim();
@@ -852,7 +865,7 @@ async function identifyCurrentMedia() {
   }
 
   lastLookupKey = parsed.lookupKey || "";
-  log("Parsed " + parsedLabel(parsed));
+  log("Parsed " + parsedLabel(parsed) + " via " + (parsed.parserSource || "unknown"));
   debugOsd("Parsed " + parsedLabel(parsed));
 
   if (cachedEntry) {

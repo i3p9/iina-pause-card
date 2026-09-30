@@ -20,7 +20,7 @@ You can install Pause Card either by:
 1. entering the GitHub repository URL in IINA
 2. opening a packaged `*.iinaplgz` release with IINA
 
-After installation, open `Plugins -> Pause Card -> Preferences` and paste a TMDB API key or Read Access Token.
+TMDB access is included, so no personal API key is needed. An optional Read Access Token override is available in `Plugins -> Pause Card -> Preferences`.
 
 ## Development
 
@@ -50,7 +50,7 @@ Typical local dev loop:
 2. Run `./scripts/stage-plugin.sh` to refresh the staged plugin.
 3. Restart IINA when needed to pick up the updated build.
 4. Test with local media in IINA.
-5. Configure TMDB auth in `Plugins -> Pause Card -> Preferences` if you want live metadata during testing.
+5. TMDB lookups work with the bundled project token; set an optional override in `Plugins -> Pause Card -> Preferences` only when needed.
 
 Useful checks before opening a PR:
 
@@ -87,7 +87,7 @@ This writes the staged plugin and the packaged `*.iinaplgz` archive into `.build
 ## Notes
 
 - Successful TMDB results are cached as the stable metadata source.
-- If TMDB auth is missing, the plugin falls back to parsed filename data and can upgrade that cache later once auth is added.
+- If TMDB is unavailable, the plugin falls back to parsed filename data and retries later.
 - Error and no-match fallbacks use retry cooldowns to avoid repeated failed lookups.
 
 ## Known Gaps

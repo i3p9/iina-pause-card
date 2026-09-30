@@ -9,6 +9,7 @@ mkdir -p "$BUILD_DIR"
 
 cp "$ROOT_DIR/Info.json" "$BUILD_DIR/Info.json"
 cp "$ROOT_DIR/main.js" "$BUILD_DIR/main.js"
+cp "$ROOT_DIR/tmdb_keys.js" "$BUILD_DIR/tmdb_keys.js"
 cp "$ROOT_DIR/parser.js" "$BUILD_DIR/parser.js"
 cp "$ROOT_DIR/overlay.html" "$BUILD_DIR/overlay.html"
 cp "$ROOT_DIR/preferences.html" "$BUILD_DIR/preferences.html"

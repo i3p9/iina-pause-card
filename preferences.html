@@ -25,18 +25,18 @@
   <div class="pref-section">
     <h3>Metadata</h3>
     <div class="pref-grid">
-      <label for="tmdb-auth">TMDB auth</label>
-      <input id="tmdb-auth" type="text" data-pref-key="tmdb_auth" placeholder="API key or Read Access Token" />
-      <div></div>
-      <p class="small secondary pref-help pref-note">
-        Automatic lookup uses TMDB for both movies and TV episodes. Paste either a TMDB v3 API key or a v4 Read Access Token.
-      </p>
-
       <label for="language">Language</label>
       <input id="language" type="text" data-pref-key="metadata_language" placeholder="en-US" />
       <div></div>
       <p class="small secondary pref-help pref-note">
         TMDB language code used when fetching titles and synopses, for example <code>en-US</code>.
+      </p>
+
+      <label for="tmdb-auth">TMDB token override</label>
+      <input id="tmdb-auth" type="text" data-pref-key="tmdb_auth" placeholder="Optional override" />
+      <div></div>
+      <p class="small secondary pref-help pref-note">
+        Pause Card includes TMDB access for automatic lookups. You only need to set an override if you want to use your own Read Access Token.
       </p>
     </div>
   </div>

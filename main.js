@@ -1,4 +1,5 @@
 const { core, event, overlay, file, preferences, utils } = iina;
+var tmdbKeys = require("./tmdb_keys.js");
 
 var overlayLoaded = false;
 var overlayMounted = false;
@@ -14,6 +15,8 @@ var lastSourceSignature = "";
 var lastLookupKey = "";
 var parser = null;
 var guessitFailureLogged = false;
+var guessitModule = null;
+var guessitModuleLoadError = null;
 
 try {
   parser = require("./parser.js");
@@ -23,10 +26,18 @@ try {
   throw error;
 }
 
+try {
+  guessitModule = require("./vendor/guessit-js.cjs");
+  iina.console.log("[PauseCard] Vendored GuessIt module loaded");
+} catch (error) {
+  guessitModuleLoadError = error;
+  iina.console.log("[PauseCard] Vendored GuessIt module failed: " + ((error && error.message) || String(error)));
+}
+
 parser.configure({
   loadGuessitModule: function() {
-    appendDebugLog("[PauseCard] Loading vendored guessit bundle");
-    return require("./vendor/guessit-js.cjs");
+    if (guessitModule) return guessitModule;
+    throw guessitModuleLoadError || new Error("Vendored GuessIt module is unavailable");
   }
 });
 
@@ -457,6 +468,10 @@ function prefString(key, fallbackValue) {
   return String(value);
 }
 
+function tmdbAuthToken() {
+  return prefString("tmdb_auth", "").trim() || String(tmdbKeys.getReadToken() || "").trim();
+}
+
 function prefNumber(key, fallbackValue) {
   var value = preferences.get(key);
   if (typeof value === "number" && !isNaN(value)) return value;
@@ -583,7 +598,7 @@ function buildFallbackDisplay(parsed, message) {
       primaryTitle: parsed.showTitle,
       secondaryTitle: "Season " + parsed.season + ": Ep. " + parsed.episode,
       tertiaryTitle: parsed.episodeTitle || "",
-      summary: message || "Automatic metadata lookup is waiting for TMDB credentials."
+      summary: message || "Automatic metadata lookup is waiting for TMDB."
     };
   }
 
@@ -593,7 +608,7 @@ function buildFallbackDisplay(parsed, message) {
     primaryTitle: parsed.title,
     secondaryTitle: parsed.year ? String(parsed.year) : "Movie",
     tertiaryTitle: "",
-    summary: message || "Automatic metadata lookup is waiting for TMDB credentials."
+    summary: message || "Automatic metadata lookup is waiting for TMDB."
   };
 }
 
@@ -628,7 +643,7 @@ function retryAfterForPolicy(policy) {
 }
 
 function shouldUseCachedEntry(entry) {
-  var auth = prefString("tmdb_auth", "").trim();
+  var auth = tmdbAuthToken();
   if (!entry) return false;
   if (!entry.policy) {
     if (entry.source === "tmdb") return true;
@@ -805,7 +820,7 @@ function refreshOverlayIfNeeded() {
 }
 
 function tmdbNotice() {
-  return "Add a TMDB API key or read access token in IINA Settings > Plugins > Pause Card.";
+  return "TMDB lookup is unavailable. Check your network connection or optional token override.";
 }
 
 function lookupFailureNotice(error) {
@@ -834,7 +849,7 @@ async function identifyCurrentMedia() {
   logGuessitFailureOnce();
   var lookupToken = activeLookupToken + 1;
   var cachedEntry = getCachedEntry(source, parsed);
-  var auth = prefString("tmdb_auth", "").trim();
+  var auth = tmdbAuthToken();
   var language = prefString("metadata_language", "en-US");
 
   activeLookupToken = lookupToken;

@@ -10164,3 +10164,5 @@ exports.properties = properties;
 exports.rebulkBuilder = rebulkBuilder;
 exports.reset = reset;
 //# sourceMappingURL=guessit-js.cjs.map
+
+module.exports = exports;

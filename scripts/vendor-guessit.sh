@@ -13,5 +13,7 @@ fi
 
 mkdir -p "$TARGET_DIR"
 cp "$SOURCE_PATH" "$TARGET_PATH"
+# IINA's CommonJS loader does not reliably expose the bundle's `exports` alias.
+printf '\nmodule.exports = exports;\n' >> "$TARGET_PATH"
 
 printf '%s\n' "$TARGET_PATH"
